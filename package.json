@@ -1,7 +1,8 @@
 {
   "name": "herb-db",
   "scripts": {
-    "dev": "bun run --hot src/index.js"
+    "dev": "bun run --hot src/index.js",
+    "seed": "bun run src/seeds/herbSeed.js"
   },
   "dependencies": {
     "dotenv": "^17.2.0",
