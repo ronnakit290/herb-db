@@ -1,0 +1,16 @@
+Table: photos
+Column: id
+Column: filename
+Column: originalName
+Column: path
+Column: url
+Column: mimeType
+Column: size
+Column: alt
+Column: description
+Column: herbId
+Column: familyId
+Column: villageId
+Column: isActive
+Column: createdAt
+Column: updatedAt

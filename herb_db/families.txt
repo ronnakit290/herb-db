@@ -1,0 +1,8 @@
+Table: families
+Column: id
+Column: name
+Column: description
+Column: scientificName
+Column: isActive
+Column: createdAt
+Column: updatedAt

@@ -1,0 +1,6 @@
+Table: villages
+Column: id
+Column: name
+Column: villageNumber
+Column: sub_districtId
+Column: subDistrictId

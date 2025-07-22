@@ -1,0 +1,8 @@
+Table: herbs
+Column: id
+Column: name
+Column: englishName
+Column: description
+Column: scientificName
+Column: familyId
+Column: villageId

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Village Cards</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .village-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .village-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .village-card:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.2);
+        }
+        .village-card.selected {
+            border-color: #2ecc71;
+            background: #f8fff9;
+        }
+        .village-card h3 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        .village-card p {
+            margin: 0;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        .filter-status {
+            background: #e8f5e8;
+            border: 1px solid #2ecc71;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 20px 0;
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .hidden {
+            display: none;
+        }
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌿 ระบบจัดการข้อมูลสมุนไพร</h1>
+        
+        <div id="villageSelection">
+            <h2>🏘️ เลือกหมู่บ้าน</h2>
+            <div id="villageCards" class="village-cards">
+                <div class="village-card" onclick="selectVillage(1, 'บ้านดอยสะเก็ด')">
+                    <h3>บ้านดอยสะเก็ด</h3>
+                    <p>คลิกเพื่อดูสมุนไพรในหมู่บ้านนี้</p>
+                </div>
+                <div class="village-card" onclick="selectVillage(2, 'บ้านแม่กำปอง')">
+                    <h3>บ้านแม่กำปอง</h3>
+                    <p>คลิกเพื่อดูสมุนไพรในหมู่บ้านนี้</p>
+                </div>
+                <div class="village-card selected" onclick="selectVillage(3, 'บ้านป่าแดด')">
+                    <h3>บ้านป่าแดด</h3>
+                    <p>คลิกเพื่อดูสมุนไพรในหมู่บ้านนี้</p>
+                </div>
+                <div class="village-card" onclick="selectVillage(4, 'บ้านแม่แจ่ม')">
+                    <h3>บ้านแม่แจ่ม</h3>
+                    <p>คลิกเพื่อดูสมุนไพรในหมู่บ้านนี้</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="filterStatus" class="filter-status hidden">
+            กำลังแสดงสมุนไพรจากหมู่บ้าน: <strong>บ้านป่าแดด</strong>
+        </div>
+        
+        <div id="formSection" class="form-section hidden">
+            <h2>เพิ่ม/แก้ไขข้อมูลสมุนไพร</h2>
+            <p>ฟอร์มจะแสดงเมื่อเลือกหมู่บ้านแล้ว</p>
+        </div>
+        
+        <div id="herbsSection" class="herbs-list hidden">
+            <h2>รายการสมุนไพร</h2>
+            <p>รายการสมุนไพรจะแสดงเมื่อเลือกหมู่บ้านแล้ว</p>
+        </div>
+    </div>
+
+    <script>
+        function selectVillage(villageId, villageName) {
+            // Remove selected class from all cards
+            document.querySelectorAll('.village-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Add selected class to clicked card
+            event.target.closest('.village-card').classList.add('selected');
+            
+            // Show filter status
+            const filterStatus = document.getElementById('filterStatus');
+            filterStatus.innerHTML = `กำลังแสดงสมุนไพรจากหมู่บ้าน: <strong>${villageName}</strong>`;
+            filterStatus.classList.remove('hidden');
+            
+            // Hide village selection, show form and herbs sections
+            document.getElementById('villageSelection').classList.add('hidden');
+            document.getElementById('formSection').classList.remove('hidden');
+            document.getElementById('herbsSection').classList.remove('hidden');
+            
+            alert(`เลือกหมู่บ้าน: ${villageName} (ID: ${villageId})`);
+        }
+        
+        function clearFilter() {
+            // Show village selection, hide other sections
+            document.getElementById('villageSelection').classList.remove('hidden');
+            document.getElementById('formSection').classList.add('hidden');
+            document.getElementById('herbsSection').classList.add('hidden');
+            document.getElementById('filterStatus').classList.add('hidden');
+            
+            // Remove selected class from all cards
+            document.querySelectorAll('.village-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+        }
+    </script>
+</body>
+</html>
