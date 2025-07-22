@@ -200,11 +200,34 @@
         .hidden {
             display: none;
         }
+        .navigation {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .navigation a {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 0 10px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .navigation a:hover {
+            background-color: #2980b9;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🌿 ระบบจัดการข้อมูลสมุนไพร</h1>
+        
+        <div class="navigation">
+            <a href="herb.php">จัดการสมุนไพร</a>
+            <a href="family-management.php">จัดการตระกูลพืช</a>
+            <a href="village-management.php">จัดการหมู่บ้าน</a>
+        </div>
         
         <div id="message"></div>
         
