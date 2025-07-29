@@ -109,7 +109,7 @@ function updateHerb() {
         echo json_encode(['error' => 'ID and Name are required']);
         return;
     }
-    
+
     $sql = "UPDATE herbs SET name = :name, englishName = :englishName, description = :description, 
             scientificName = :scientificName, familyId = :familyId, villageId = :villageId 
             WHERE id = :id";
@@ -189,6 +189,7 @@ function readHerbs() {
     
     $sql .= " ORDER BY h.id DESC LIMIT :limit OFFSET :offset";
     
+
     $stmt = $pdo->prepare($sql);
     $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
     $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);

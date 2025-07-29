@@ -1,393 +1,256 @@
+<?php
+require_once 'connect.php';
+
+// Handle form submissions
+$message = '';
+$messageType = '';
+$editVillage = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['action'])) {
+        switch ($_POST['action']) {
+            case 'create':
+                $name = trim($_POST['name']);
+                $subDistrictId = !empty($_POST['subDistrictId']) ? $_POST['subDistrictId'] : null;
+
+                if (!empty($name)) {
+                    try {
+                        $stmt = $pdo->prepare("INSERT INTO villages (name, subDistrictId) VALUES (?, ?)");
+                        $stmt->execute([$name, $subDistrictId]);
+                        $message = 'เพิ่มหมู่บ้านสำเร็จ!';
+                        $messageType = 'success';
+                    } catch (PDOException $e) {
+                        $message = 'เกิดข้อผิดพลาด: ' . $e->getMessage();
+                        $messageType = 'error';
+                    }
+                } else {
+                    $message = 'กรุณากรอกชื่อหมู่บ้าน';
+                    $messageType = 'error';
+                }
+                break;
+
+            case 'update':
+                $id = $_POST['id'];
+                $name = trim($_POST['name']);
+                $subDistrictId = !empty($_POST['subDistrictId']) ? $_POST['subDistrictId'] : null;
+
+                if (!empty($name) && !empty($id)) {
+                    try {
+                        $stmt = $pdo->prepare("UPDATE villages SET name = ?, subDistrictId = ? WHERE id = ?");
+                        $stmt->execute([$name, $subDistrictId, $id]);
+                        $message = 'อัปเดตหมู่บ้านสำเร็จ!';
+                        $messageType = 'success';
+                    } catch (PDOException $e) {
+                        $message = 'เกิดข้อผิดพลาด: ' . $e->getMessage();
+                        $messageType = 'error';
+                    }
+                } else {
+                    $message = 'ข้อมูลไม่ครบถ้วน';
+                    $messageType = 'error';
+                }
+                break;
+
+            case 'delete':
+                $id = $_POST['id'];
+                if (!empty($id)) {
+                    try {
+                        $stmt = $pdo->prepare("DELETE FROM villages WHERE id = ?");
+                        $stmt->execute([$id]);
+                        $message = 'ลบหมู่บ้านสำเร็จ!';
+                        $messageType = 'success';
+                    } catch (PDOException $e) {
+                        $message = 'เกิดข้อผิดพลาด: ' . $e->getMessage();
+                        $messageType = 'error';
+                    }
+                }
+                break;
+        }
+    }
+}
+
+// Handle edit request
+if (isset($_GET['edit'])) {
+    $editId = $_GET['edit'];
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM villages WHERE id = ?");
+        $stmt->execute([$editId]);
+        $editVillage = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $message = 'ไม่สามารถโหลดข้อมูลสำหรับแก้ไขได้';
+        $messageType = 'error';
+    }
+}
+
+// Load villages
+try {
+    $stmt = $pdo->query("
+        SELECT v.*, sd.name as sub_district_name 
+        FROM villages v 
+        LEFT JOIN sub_districts sd ON v.subDistrictId = sd.id 
+        ORDER BY v.name
+    ");
+    $villages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $villages = [];
+    $message = 'ไม่สามารถโหลดข้อมูลหมู่บ้านได้';
+    $messageType = 'error';
+}
+
+// Load sub-districts for dropdown
+try {
+    $stmt = $pdo->query("SELECT * FROM sub_districts ORDER BY name");
+    $subDistricts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $subDistricts = [];
+}
+?>
+
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>จัดการข้อมูลหมู่บ้าน</title>
+    <title>จัดการหมู่บ้าน - ระบบจัดการสมุนไพร</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #2c3e50;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .form-section {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #34495e;
-        }
-        input, textarea, select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-right: 10px;
-            transition: background-color 0.3s;
-        }
-        .btn-success {
-            background-color: #27ae60;
-            color: white;
-        }
-        .btn-success:hover {
-            background-color: #219a52;
-        }
-        .btn-danger {
-            background-color: #e74c3c;
-            color: white;
-        }
-        .btn-danger:hover {
-            background-color: #c0392b;
-        }
-        .btn-warning {
-            background-color: #f39c12;
-            color: white;
-        }
-        .btn-warning:hover {
-            background-color: #d68910;
-        }
-        .villages-list {
-            margin-top: 30px;
-            margin-bottom: 30px;
-        }
-        .village-item {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .village-info h3 {
-            margin: 0 0 5px 0;
-            color: #2c3e50;
-        }
-        .village-info p {
-            margin: 0;
-            color: #7f8c8d;
-            font-size: 14px;
-        }
-        .village-actions {
-            display: flex;
-            gap: 10px;
-        }
-        .message {
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
-        .message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .navigation {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .navigation a {
-            display: inline-block;
-            padding: 10px 20px;
-            margin: 0 10px;
-            background-color: #3498db;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-        .navigation a:hover {
-            background-color: #2980b9;
-        }
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        @media (max-width: 768px) {
-            .form-row {
-                grid-template-columns: 1fr;
-            }
+            font-family: 'Noto Sans Thai', sans-serif;
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>🏘️ จัดการข้อมูลหมู่บ้าน</h1>
-        
-        <div class="navigation">
-            <a href="herb.php">จัดการสมุนไพร</a>
-            <a href="family-management.php">จัดการตระกูลพืช</a>
-            <a href="village-management.php">จัดการหมู่บ้าน</a>
+
+<body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <div class="mb-4">
+                <a href="index.php" class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200">
+                    🏠 กลับหน้าหลัก
+                </a>
+            </div>
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">🏘️ จัดการหมู่บ้าน</h1>
+            <p class="text-lg text-gray-600">ระบบจัดการข้อมูลหมู่บ้านในโครงการสมุนไพรท้องถิ่น</p>
         </div>
-        
-        <div id="message"></div>
-        
-        <div class="form-section">
-            <h2 id="formTitle">เพิ่มหมู่บ้านใหม่</h2>
-            <form id="villageForm">
-                <input type="hidden" id="villageId">
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="name">ชื่อหมู่บ้าน *</label>
-                        <input type="text" id="name" required>
+
+        <!-- Navigation Menu -->
+        <div class="text-center mb-8">
+            <a href="index.php" class="inline-block px-6 py-3 mx-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">หน้าหลัก</a>
+            <a href="herb.php" class="inline-block px-6 py-3 mx-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">จัดการสมุนไพร</a>
+            <a href="family-management.php" class="inline-block px-6 py-3 mx-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">จัดการตระกูลพืช</a>
+            <a href="village-management.php" class="inline-block px-6 py-3 mx-2 bg-purple-700 text-white rounded-lg">จัดการหมู่บ้าน</a>
+        </div>
+
+        <!-- Message -->
+        <?php if ($message): ?>
+            <div class="mb-6 p-4 rounded-lg <?php echo $messageType === 'success' ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-100 text-red-700 border border-red-300'; ?>">
+                <?php echo htmlspecialchars($message); ?>
+            </div>
+        <?php endif; ?>
+
+        <!-- Village Form - Show only when action=create, action=update, or edit parameter exists -->
+        <?php if (isset($_GET['action']) && ($_GET['action'] === 'create' || $_GET['action'] === 'update') || isset($_GET['edit'])): ?>
+        <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">
+                <?php echo $editVillage ? '✏️ แก้ไขข้อมูลหมู่บ้าน' : '➕ เพิ่มหมู่บ้านใหม่'; ?>
+            </h2>
+
+            <form method="POST" class="space-y-4">
+                <input type="hidden" name="action" value="<?php echo $editVillage ? 'update' : 'create'; ?>">
+                <?php if ($editVillage): ?>
+                    <input type="hidden" name="id" value="<?php echo $editVillage['id']; ?>">
+                <?php endif; ?>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">ชื่อหมู่บ้าน *</label>
+                        <input type="text" id="name" name="name" required
+                            value="<?php echo $editVillage ? htmlspecialchars($editVillage['name']) : ''; ?>"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
-                    <div class="form-group">
-                        <label for="subDistrictId">ตำบล</label>
-                        <select id="subDistrictId">
+
+                    <div>
+                        <label for="subDistrictId" class="block text-sm font-medium text-gray-700 mb-2">ตำบล</label>
+                        <select id="subDistrictId" name="subDistrictId"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">-- เลือกตำบล --</option>
+                            <?php foreach ($subDistricts as $subDistrict): ?>
+                                <option value="<?php echo $subDistrict['id']; ?>"
+                                    <?php echo ($editVillage && $editVillage['subDistrictId'] == $subDistrict['id']) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($subDistrict['name']); ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
-                
 
-                
-                <button type="submit" class="btn btn-success">บันทึก</button>
-                <button type="button" class="btn btn-danger" onclick="clearForm()">ล้างข้อมูล</button>
+                <div class="flex space-x-4">
+                    <button type="submit" class="px-8 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors shadow-md font-medium">
+                        <?php echo $editVillage ? '✅ อัปเดต' : '💾 บันทึก'; ?>
+                    </button>
+                    <?php if ($editVillage): ?>
+                        <a href="village-management.php" class="px-8 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors inline-block shadow-md font-medium">
+                            ❌ ยกเลิก
+                        </a>
+                    <?php else: ?>
+                        <button type="reset" class="px-8 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors shadow-md font-medium">
+                            🗑️ ล้างข้อมูล
+                        </button>
+                    <?php endif; ?>
+                </div>
             </form>
         </div>
-        
-        <div class="villages-list">
-            <h2>รายการหมู่บ้าน</h2>
-            <button onclick="loadVillages()" class="btn btn-success">โหลดข้อมูล</button>
-            <div id="villagesList"></div>
+        <?php endif; ?>
+
+        <!-- Add Village Button - Show only when form is not displayed -->
+        <?php if (!isset($_GET['action']) && !isset($_GET['edit'])): ?>
+        <div class="text-center mb-8">
+            <a href="?action=create" class="inline-block px-8 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors shadow-md font-medium">
+                ➕ เพิ่มหมู่บ้านใหม่
+            </a>
+        </div>
+        <?php endif; ?>
+
+        <!-- Villages List -->
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">📋 รายการหมู่บ้าน</h2>
+
+            <?php if (empty($villages)): ?>
+                <div class="text-center py-12">
+                    <div class="text-6xl mb-4">🏘️</div>
+                    <p class="text-gray-600 text-lg">ไม่มีข้อมูลหมู่บ้าน</p>
+                    <p class="text-gray-500 text-sm mt-2">เริ่มต้นเพิ่มหมู่บ้านแรกของคุณ</p>
+                </div>
+            <?php else: ?>
+                <div class="space-y-4">
+                    <?php foreach ($villages as $village): ?>
+                        <div class="flex justify-between items-center p-6 bg-gradient-to-r from-white to-gray-50 rounded-lg border border-gray-200 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                            <div>
+                                <h3 class="font-semibold text-gray-800"><?php echo htmlspecialchars($village['name']); ?></h3>
+                                <p class="text-sm text-gray-600">
+                                    ตำบล: <?php echo $village['sub_district_name'] ? htmlspecialchars($village['sub_district_name']) : 'ไม่ระบุ'; ?>
+                                </p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <a href="?edit=<?php echo $village['id']; ?>"
+                                    class="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors shadow-md font-medium">
+                                    ✏️ แก้ไข
+                                </a>
+                                <form method="POST" class="inline" onsubmit="return confirm('คุณต้องการลบหมู่บ้าน &quot;<?php echo htmlspecialchars($village['name']); ?>&quot; หรือไม่?')">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="<?php echo $village['id']; ?>">
+                                    <button type="submit" class="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors shadow-md font-medium">
+                                        🗑️ ลบ
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
-
-    <script>
-        // Load villages and sub-districts on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadVillages();
-            loadSubDistricts();
-        });
-
-        // Handle form submission
-        document.getElementById('villageForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const villageId = document.getElementById('villageId').value;
-            const name = document.getElementById('name').value;
-            const subDistrictId = document.getElementById('subDistrictId').value;
-            
-            const data = {
-                name: name,
-                subDistrictId: subDistrictId || null
-            };
-            
-            if (villageId) {
-                data.id = villageId;
-                updateVillage(data);
-            } else {
-                createVillage(data);
-            }
-        });
-
-        // Load sub-districts for dropdown
-        function loadSubDistricts() {
-            fetch('village-action.php?action=sub_districts')
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    const subDistrictSelect = document.getElementById('subDistrictId');
-                    subDistrictSelect.innerHTML = '<option value="">-- เลือกตำบล --</option>';
-                    
-                    result.data.forEach(subDistrict => {
-                        const option = document.createElement('option');
-                        option.value = subDistrict.id;
-                        option.textContent = subDistrict.name;
-                        subDistrictSelect.appendChild(option);
-                    });
-                }
-            })
-            .catch(error => {
-                console.log('ไม่สามารถโหลดข้อมูลตำบลได้:', error);
-            });
-        }
-
-        // Create new village
-        function createVillage(data) {
-            fetch('village-action.php?action=create', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    showMessage('เพิ่มหมู่บ้านสำเร็จ!', 'success');
-                    clearForm();
-                    loadVillages();
-                } else {
-                    showMessage('เกิดข้อผิดพลาด: ' + result.message, 'error');
-                }
-            })
-            .catch(error => {
-                showMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
-                console.error('Error:', error);
-            });
-        }
-
-        // Update village
-        function updateVillage(data) {
-            fetch('village-action.php?action=update', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    showMessage('อัปเดตหมู่บ้านสำเร็จ!', 'success');
-                    clearForm();
-                    loadVillages();
-                } else {
-                    showMessage('เกิดข้อผิดพลาด: ' + result.message, 'error');
-                }
-            })
-            .catch(error => {
-                showMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
-                console.error('Error:', error);
-            });
-        }
-
-        // Load all villages
-        function loadVillages() {
-            fetch('village-action.php?action=read')
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    displayVillages(result.data);
-                } else {
-                    showMessage('ไม่สามารถโหลดข้อมูลได้: ' + result.message, 'error');
-                }
-            })
-            .catch(error => {
-                showMessage('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
-                console.error('Error:', error);
-            });
-        }
-
-        // Display villages list
-        function displayVillages(villages) {
-            const villagesList = document.getElementById('villagesList');
-            
-            if (villages.length === 0) {
-                villagesList.innerHTML = '<p>ไม่มีข้อมูลหมู่บ้าน</p>';
-                return;
-            }
-            
-            villagesList.innerHTML = villages.map(village => `
-                <div class="village-item">
-                    <div class="village-info">
-                        <h3>${village.name}</h3>
-                        <p>ตำบล: ${village.sub_district_name || 'ไม่ระบุ'}</p>
-                    </div>
-                    <div class="village-actions">
-                        <button class="btn btn-warning" onclick="editVillage(${village.id}, '${village.name}', ${village.subDistrictId || 'null'})">แก้ไข</button>
-                        <button class="btn btn-danger" onclick="deleteVillage(${village.id}, '${village.name}')">ลบ</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Edit village
-        function editVillage(id, name, subDistrictId) {
-            document.getElementById('villageId').value = id;
-            document.getElementById('name').value = name;
-            document.getElementById('subDistrictId').value = subDistrictId || '';
-            document.getElementById('formTitle').textContent = 'แก้ไขหมู่บ้าน';
-            
-            // Scroll to form
-            document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        // Delete village
-        function deleteVillage(id, name) {
-            if (confirm(`คุณต้องการลบหมู่บ้าน "${name}" หรือไม่?`)) {
-                fetch('village-action.php?action=delete', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ id: id })
-                })
-                .then(response => response.json())
-                .then(result => {
-                    if (result.success) {
-                        showMessage('ลบหมู่บ้านสำเร็จ!', 'success');
-                        loadVillages();
-                    } else {
-                        showMessage('เกิดข้อผิดพลาด: ' + result.message, 'error');
-                    }
-                })
-                .catch(error => {
-                    showMessage('เกิดข้อผิดพลาดในการลบข้อมูล', 'error');
-                    console.error('Error:', error);
-                });
-            }
-        }
-
-        // Clear form
-        function clearForm() {
-            document.getElementById('villageId').value = '';
-            document.getElementById('name').value = '';
-            document.getElementById('subDistrictId').value = '';
-            document.getElementById('formTitle').textContent = 'เพิ่มหมู่บ้านใหม่';
-        }
-
-        // Show message
-        function showMessage(message, type) {
-            const messageDiv = document.getElementById('message');
-            messageDiv.innerHTML = `<div class="message ${type}">${message}</div>`;
-            
-            // Auto hide after 5 seconds
-            setTimeout(() => {
-                messageDiv.innerHTML = '';
-            }, 5000);
-        }
-    </script>
 </body>
+
 </html>
